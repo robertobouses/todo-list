@@ -47,12 +47,18 @@ func GetTaskHandler(c *gin.Context) {
 	c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
 }
 
+func GetAllTaskHandler(c *gin.Context) {
+
+	c.JSON(http.StatusOK, taskList)
+}
+
 func main() {
 
 	r := gin.Default()
 	r.POST("/task", CreateTaskHandler)
 	r.GET("/task", GetTaskHandler)
 	r.GET("/task/:id", GetTaskHandler)
+	r.GET("/task/all", GetAllTaskHandler)
 
 	r.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
 }
