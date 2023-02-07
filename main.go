@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -16,7 +17,7 @@ type Task struct {
 
 var taskList []Task
 
-func PostTask(c *gin.Context) {
+func CreateTaskHandler(c *gin.Context) {
 	var task Task
 
 	if err := c.ShouldBindJSON(&task); err != nil {
@@ -32,10 +33,26 @@ func PostTask(c *gin.Context) {
 
 }
 
+func GetTaskHandler(c *gin.Context) {
+	id := c.Param("id")
+	//var id string
+
+	for _, task := range taskList {
+		if strconv.Itoa(task.ID) == id {
+			c.JSON(http.StatusOK, task)
+			return
+		}
+	}
+
+	c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+}
+
 func main() {
 
 	r := gin.Default()
-	r.POST("/task", PostTask)
+	r.POST("/task", CreateTaskHandler)
+	r.GET("/task", GetTaskHandler)
+	r.GET("/task/:id", GetTaskHandler)
 
 	r.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
 }
