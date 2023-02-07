@@ -64,6 +64,16 @@ func CompleteTaskHandler(c *gin.Context) {
 	}
 	c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
 }
+func CompletedTaskHandler(c *gin.Context) {
+	completedTasks := make([]Task, 0)
+	for _, task := range taskList {
+		if task.Completed {
+			completedTasks = append(completedTasks, task)
+		}
+
+	}
+	c.JSON(http.StatusOK, completedTasks)
+}
 
 func main() {
 
@@ -72,6 +82,7 @@ func main() {
 	r.GET("/tasks/:id", GetTaskHandler)
 	r.GET("/tasks", GetAllTaskHandler)
 	r.PUT("/tasks/:id/completed", CompleteTaskHandler)
+	r.GET("/tasks/completed", CompletedTaskHandler)
 
 	r.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
 }
