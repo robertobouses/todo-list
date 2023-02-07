@@ -13,6 +13,7 @@ type Task struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	DueDate     string `json:"dueDate"`
+	Completed   bool   `json:"completed"`
 }
 
 var taskList []Task
@@ -52,13 +53,36 @@ func GetAllTaskHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, taskList)
 }
 
+func CompleteTaskHandler(c *gin.Context) {
+	id := c.Param("id")
+	for i, task := range taskList {
+		if strconv.Itoa(task.ID) == id {
+			taskList[i].Completed = true
+			c.JSON(http.StatusOK, gin.H{"message": "Task completed"})
+			return
+		}
+	}
+	c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+}
+func CompletedTaskHandler(c *gin.Context) {
+	completedTasks := make([]Task, 0)
+	for _, task := range taskList {
+		if task.Completed {
+			completedTasks = append(completedTasks, task)
+		}
+
+	}
+	c.JSON(http.StatusOK, completedTasks)
+}
+
 func main() {
 
 	r := gin.Default()
-	r.POST("/task", CreateTaskHandler)
-	r.GET("/task", GetTaskHandler)
-	r.GET("/task/:id", GetTaskHandler)
+	r.POST("/tasks", CreateTaskHandler)
+	r.GET("/tasks/:id", GetTaskHandler)
 	r.GET("/tasks", GetAllTaskHandler)
+	r.PUT("/tasks/:id/completed", CompleteTaskHandler)
+	r.GET("/tasks/completed", CompletedTaskHandler)
 
 	r.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
 }
