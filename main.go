@@ -74,6 +74,15 @@ func CompletedTaskHandler(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, completedTasks)
 }
+func PendingTaskHandler(c *gin.Context) {
+	pendingTasks := make([]Task, 0)
+	for _, task := range taskList {
+		if task.Completed == false {
+			pendingTasks = append(pendingTasks, task)
+		}
+	}
+	c.JSON(http.StatusOK, pendingTasks)
+}
 
 func main() {
 
@@ -83,6 +92,7 @@ func main() {
 	r.GET("/tasks", GetAllTaskHandler)
 	r.PUT("/tasks/:id/completed", CompleteTaskHandler)
 	r.GET("/tasks/completed", CompletedTaskHandler)
+	r.GET("/tasks/pending", PendingTaskHandler)
 
 	r.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
 }
