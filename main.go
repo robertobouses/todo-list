@@ -19,7 +19,7 @@ type Task struct {
 
 func main() {
 	// Abrir la conexión con la base de datos
-	db, err := sql.Open("postgres", "postgresql://postgres:mypassword@localhost:5432/database_name?sslmode=disable")
+	db, err := sql.Open("postgres", "postgres://postgres:mysecretpassword@localhost:5432/postgres?sslmode=disable")
 	if err != nil {
 		log.Fatal(err)
 	}
