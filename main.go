@@ -1,11 +1,13 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
+	_ "github.com/lib/pq"
 )
 
 type Task struct {
@@ -13,86 +15,66 @@ type Task struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	DueDate     string `json:"dueDate"`
-	Completed   bool   `json:"completed"`
-}
-
-var taskList []Task
-
-func CreateTaskHandler(c *gin.Context) {
-	var task Task
-
-	if err := c.ShouldBindJSON(&task); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	task.ID = len(taskList) + 1
-	taskList = append(taskList, task)
-	fmt.Println(taskList)
-
-	c.JSON(http.StatusCreated, task)
-
-}
-
-func GetTaskHandler(c *gin.Context) {
-	id := c.Param("id")
-	//var id string
-
-	for _, task := range taskList {
-		if strconv.Itoa(task.ID) == id {
-			c.JSON(http.StatusOK, task)
-			return
-		}
-	}
-
-	c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
-}
-
-func GetAllTaskHandler(c *gin.Context) {
-
-	c.JSON(http.StatusOK, taskList)
-}
-
-func CompleteTaskHandler(c *gin.Context) {
-	id := c.Param("id")
-	for i, task := range taskList {
-		if strconv.Itoa(task.ID) == id {
-			taskList[i].Completed = true
-			c.JSON(http.StatusOK, gin.H{"message": "Task completed"})
-			return
-		}
-	}
-	c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
-}
-func CompletedTaskHandler(c *gin.Context) {
-	completedTasks := make([]Task, 0)
-	for _, task := range taskList {
-		if task.Completed {
-			completedTasks = append(completedTasks, task)
-		}
-
-	}
-	c.JSON(http.StatusOK, completedTasks)
-}
-func PendingTaskHandler(c *gin.Context) {
-	pendingTasks := make([]Task, 0)
-	for _, task := range taskList {
-		if task.Completed == false {
-			pendingTasks = append(pendingTasks, task)
-		}
-	}
-	c.JSON(http.StatusOK, pendingTasks)
 }
 
 func main() {
+	// Abrir la conexión con la base de datos
+	db, err := sql.Open("postgres", "postgres://postgres:mysecretpassword@localhost:5432/postgres?sslmode=disable")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
 
+	// Crear la tabla si no existe
+	createTable(db)
+
+	// Crear el enrutador Gin
 	r := gin.Default()
-	r.POST("/tasks", CreateTaskHandler)
-	r.GET("/tasks/:id", GetTaskHandler)
-	r.GET("/tasks", GetAllTaskHandler)
-	r.PUT("/tasks/:id/completed", CompleteTaskHandler)
-	r.GET("/tasks/completed", CompletedTaskHandler)
-	r.GET("/tasks/pending", PendingTaskHandler)
 
-	r.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
+	// Crear una nueva tarea
+	r.POST("/tasks", func(c *gin.Context) {
+		var task Task
+		if err := c.BindJSON(&task); err != nil {
+			c.AbortWithStatus(http.StatusBadRequest)
+			return
+		}
+
+		// Insertar la tarea en la base de datos
+		stmt, err := db.Prepare("INSERT INTO tasks(title, description, due_date) VALUES ($1, $2, $3) RETURNING id")
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+		defer stmt.Close()
+
+		var id int
+		if err := stmt.QueryRow(task.Title, task.Description, task.DueDate).Scan(&id); err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+
+		// Actualizar el ID de la tarea y devolverla como respuesta
+		task.ID = id
+		c.JSON(http.StatusOK, task)
+	})
+
+	// Ejecutar el servidor Gin
+	if err := r.Run(":8080"); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func createTable(db *sql.DB) {
+	query := `
+		CREATE TABLE IF NOT EXISTS tasks (
+			id SERIAL PRIMARY KEY,
+			title VARCHAR(255) NOT NULL,
+			description TEXT,
+			due_date DATE
+		);
+	`
+	if _, err := db.Exec(query); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Tabla creada correctamente")
 }
