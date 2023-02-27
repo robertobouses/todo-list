@@ -80,6 +80,20 @@ func main() {
 		c.JSON(http.StatusOK, tasks)
 	})
 
+	// Obtener una tarea por su ID
+	r.GET("/tasks/:id", func(c *gin.Context) {
+		id := c.Param("id")
+
+		var task Task
+		err := db.QueryRow("SELECT id, title, description, due_date FROM tasks WHERE id=$1", id).Scan(&task.ID, &task.Title, &task.Description, &task.DueDate)
+		if err != nil {
+			c.AbortWithError(http.StatusNotFound, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, task)
+	})
+
 	// Ejecutar el servidor Gin
 	if err := r.Run(":8080"); err != nil {
 		log.Fatal(err)
