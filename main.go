@@ -15,6 +15,7 @@ type Task struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	DueDate     string `json:"dueDate"`
+	Completed   bool   `json:"completed"`
 }
 
 func main() {
@@ -92,6 +93,31 @@ func main() {
 		}
 
 		c.JSON(http.StatusOK, task)
+	})
+	// Actualizar una tarea existente
+	r.PUT("/tasks/:id", func(c *gin.Context) {
+		id := c.Param("id")
+
+		var task Task
+		if err := c.BindJSON(&task); err != nil {
+			c.AbortWithStatus(http.StatusBadRequest)
+			return
+		}
+
+		// Actualizar la tarea en la base de datos
+		stmt, err := db.Prepare("UPDATE tasks SET title=$1, description=$2, due_date=$3, completed=$4 WHERE id=$5")
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+		defer stmt.Close()
+
+		if _, err := stmt.Exec(task.Title, task.Description, task.DueDate, task.Completed, id); err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+
+		c.Status(http.StatusOK)
 	})
 
 	// Ejecutar el servidor Gin
