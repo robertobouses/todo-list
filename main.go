@@ -117,6 +117,28 @@ func main() {
 		c.JSON(http.StatusOK, tasks)
 	})
 
+	// Obtener todas las tareas completadas
+	r.GET("/tasks/pending", func(c *gin.Context) {
+		rows, err := db.Query("SELECT id, title, description, due_date, completed FROM tasks WHERE completed=false ORDER BY id")
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+		defer rows.Close()
+
+		tasks := []Task{}
+		for rows.Next() {
+			var task Task
+			if err := rows.Scan(&task.ID, &task.Title, &task.Description, &task.DueDate, &task.Completed); err != nil {
+				c.AbortWithError(http.StatusInternalServerError, err)
+				return
+			}
+			tasks = append(tasks, task)
+		}
+
+		c.JSON(http.StatusOK, tasks)
+	})
+
 	// Actualizar una tarea existente
 	r.PUT("/tasks/:id", func(c *gin.Context) {
 		id := c.Param("id")
