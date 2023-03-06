@@ -61,7 +61,7 @@ func main() {
 
 	// Obtener todas las tareas
 	r.GET("/tasks", func(c *gin.Context) {
-		rows, err := db.Query("SELECT id, title, description, due_date FROM tasks ORDER BY id")
+		rows, err := db.Query("SELECT id, title, description, due_date, completed FROM tasks ORDER BY id")
 		if err != nil {
 			c.AbortWithError(http.StatusInternalServerError, err)
 			return
@@ -71,7 +71,7 @@ func main() {
 		tasks := []Task{}
 		for rows.Next() {
 			var task Task
-			if err := rows.Scan(&task.ID, &task.Title, &task.Description, &task.DueDate); err != nil {
+			if err := rows.Scan(&task.ID, &task.Title, &task.Description, &task.DueDate, &task.Completed); err != nil {
 				c.AbortWithError(http.StatusInternalServerError, err)
 				return
 			}
@@ -86,7 +86,7 @@ func main() {
 		id := c.Param("id")
 
 		var task Task
-		err := db.QueryRow("SELECT id, title, description, due_date FROM tasks WHERE id=$1", id).Scan(&task.ID, &task.Title, &task.Description, &task.DueDate)
+		err := db.QueryRow("SELECT id, title, description, due_date, completed FROM tasks WHERE id=$1", id).Scan(&task.ID, &task.Title, &task.Description, &task.DueDate, &task.Completed)
 		if err != nil {
 			c.AbortWithError(http.StatusNotFound, err)
 			return
@@ -105,8 +105,6 @@ func main() {
 			return
 		}
 
-		task.Completed = c.Request.URL.Query().Get("completed") == "true"
-
 		fmt.Println("COMPLETED ANTES DE LA ACTUALIZACIÓN:", task.Completed)
 
 		// Actualizar la tarea en la base de datos
@@ -116,8 +114,9 @@ func main() {
 			return
 		}
 		defer stmt.Close()
-
-		if _, err := stmt.Exec(task.Title, task.Description, task.DueDate, task.Completed, id); err != nil {
+		fmt.Printf("UPDATE tasks SET title=%s, description=%s, due_date=%s, completed=%t WHERE id=%s\n", task.Title, task.Description, task.DueDate, task.Completed, id)
+		_, err = stmt.Exec(task.Title, task.Description, task.DueDate, task.Completed, id)
+		if err != nil {
 			c.AbortWithError(http.StatusInternalServerError, err)
 			return
 		}
@@ -141,7 +140,7 @@ func createTable(db *sql.DB) {
 			title VARCHAR(255) NOT NULL,
 			description TEXT,
 			due_date DATE,
-			completed BOOLEAN DEFAULT false
+			completed BOOLEAN NOT NULL DEFAULT false 
 		);
 	`
 	if _, err := db.Exec(query); err != nil {
