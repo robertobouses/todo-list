@@ -15,6 +15,7 @@ type Task struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	DueDate     string `json:"dueDate"`
+	Completed   bool   `json:"completed"`
 }
 
 func main() {
@@ -60,7 +61,7 @@ func main() {
 
 	// Obtener todas las tareas
 	r.GET("/tasks", func(c *gin.Context) {
-		rows, err := db.Query("SELECT id, title, description, due_date FROM tasks ORDER BY id")
+		rows, err := db.Query("SELECT id, title, description, due_date, completed FROM tasks ORDER BY id")
 		if err != nil {
 			c.AbortWithError(http.StatusInternalServerError, err)
 			return
@@ -70,7 +71,7 @@ func main() {
 		tasks := []Task{}
 		for rows.Next() {
 			var task Task
-			if err := rows.Scan(&task.ID, &task.Title, &task.Description, &task.DueDate); err != nil {
+			if err := rows.Scan(&task.ID, &task.Title, &task.Description, &task.DueDate, &task.Completed); err != nil {
 				c.AbortWithError(http.StatusInternalServerError, err)
 				return
 			}
@@ -85,13 +86,44 @@ func main() {
 		id := c.Param("id")
 
 		var task Task
-		err := db.QueryRow("SELECT id, title, description, due_date FROM tasks WHERE id=$1", id).Scan(&task.ID, &task.Title, &task.Description, &task.DueDate)
+		err := db.QueryRow("SELECT id, title, description, due_date, completed FROM tasks WHERE id=$1", id).Scan(&task.ID, &task.Title, &task.Description, &task.DueDate, &task.Completed)
 		if err != nil {
 			c.AbortWithError(http.StatusNotFound, err)
 			return
 		}
 
 		c.JSON(http.StatusOK, task)
+	})
+
+	// Actualizar una tarea existente
+	r.PUT("/tasks/:id", func(c *gin.Context) {
+		id := c.Param("id")
+		fmt.Println("EL VALOR DEL ID!!!!!!!!!!!!!!!", id)
+		var task Task
+		if err := c.BindJSON(&task); err != nil {
+			c.AbortWithStatus(http.StatusBadRequest)
+			return
+		}
+
+		fmt.Println("COMPLETED ANTES DE LA ACTUALIZACIÓN:", task.Completed)
+
+		// Actualizar la tarea en la base de datos
+		stmt, err := db.Prepare("UPDATE tasks SET title=$1, description=$2, due_date=$3, completed=$4 WHERE id=$5")
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+		defer stmt.Close()
+		fmt.Printf("UPDATE tasks SET title=%s, description=%s, due_date=%s, completed=%t WHERE id=%s\n", task.Title, task.Description, task.DueDate, task.Completed, id)
+		_, err = stmt.Exec(task.Title, task.Description, task.DueDate, task.Completed, id)
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+
+		fmt.Println("COMPLETED DESPUÉS DE LA ACTUALIZACIÓN:", task.Completed)
+
+		c.Status(http.StatusOK)
 	})
 
 	// Ejecutar el servidor Gin
@@ -107,7 +139,8 @@ func createTable(db *sql.DB) {
 			id SERIAL PRIMARY KEY,
 			title VARCHAR(255) NOT NULL,
 			description TEXT,
-			due_date DATE
+			due_date DATE,
+			completed BOOLEAN NOT NULL DEFAULT false 
 		);
 	`
 	if _, err := db.Exec(query); err != nil {
