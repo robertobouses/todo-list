@@ -4,11 +4,10 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
+	"github.com/robertobouses/todo-list/handlers"
 )
 
 type Task struct {
@@ -34,164 +33,25 @@ func main() {
 	r := gin.Default()
 
 	// Crear una nueva tarea
-	r.POST("/tasks", func(c *gin.Context) {
-		var task Task
-		if err := c.BindJSON(&task); err != nil {
-			c.AbortWithStatus(http.StatusBadRequest)
-			return
-		}
-
-		// Insertar la tarea en la base de datos
-		stmt, err := db.Prepare("INSERT INTO tasks(title, description, due_date) VALUES ($1, $2, $3) RETURNING id")
-		if err != nil {
-			c.AbortWithError(http.StatusInternalServerError, err)
-			return
-		}
-		defer stmt.Close()
-
-		var id int
-		if err := stmt.QueryRow(task.Title, task.Description, task.DueDate).Scan(&id); err != nil {
-			c.AbortWithError(http.StatusInternalServerError, err)
-			return
-		}
-
-		// Actualizar el ID de la tarea y devolverla como respuesta
-		task.ID = id
-		c.JSON(http.StatusOK, task)
-	})
+	r.POST("/tasks", handlers.PostTasks)
 
 	// Obtener todas las tareas
-	r.GET("/tasks", func(c *gin.Context) {
-		rows, err := db.Query("SELECT id, title, description, due_date, completed FROM tasks ORDER BY id")
-		if err != nil {
-			c.AbortWithError(http.StatusInternalServerError, err)
-			return
-		}
-		defer rows.Close()
-
-		tasks := []Task{}
-		for rows.Next() {
-			var task Task
-			if err := rows.Scan(&task.ID, &task.Title, &task.Description, &task.DueDate, &task.Completed); err != nil {
-				c.AbortWithError(http.StatusInternalServerError, err)
-				return
-			}
-			tasks = append(tasks, task)
-		}
-
-		c.JSON(http.StatusOK, tasks)
-	})
+	r.GET("/tasks", handlers.GetTasks)
 
 	// Obtener una tarea por su ID
-	r.GET("/tasks/:id", func(c *gin.Context) {
-		id := c.Param("id")
-
-		var task Task
-		err := db.QueryRow("SELECT id, title, description, due_date, completed FROM tasks WHERE id=$1", id).Scan(&task.ID, &task.Title, &task.Description, &task.DueDate, &task.Completed)
-		if err != nil {
-			c.AbortWithError(http.StatusNotFound, err)
-			return
-		}
-
-		c.JSON(http.StatusOK, task)
-	})
+	r.GET("/tasks/:id", handlers.GetTasksId)
 
 	// Obtener todas las tareas completadas
-	r.GET("/tasks/completed", func(c *gin.Context) {
-		rows, err := db.Query("SELECT id, title, description, due_date, completed FROM tasks WHERE completed=true ORDER BY id")
-		if err != nil {
-			c.AbortWithError(http.StatusInternalServerError, err)
-			return
-		}
-		defer rows.Close()
-
-		tasks := []Task{}
-		for rows.Next() {
-			var task Task
-			if err := rows.Scan(&task.ID, &task.Title, &task.Description, &task.DueDate, &task.Completed); err != nil {
-				c.AbortWithError(http.StatusInternalServerError, err)
-				return
-			}
-			tasks = append(tasks, task)
-		}
-
-		c.JSON(http.StatusOK, tasks)
-	})
+	r.GET("/tasks/completed", handlers.GetTasksCompleted)
 
 	// Obtener todas las tareas no completadas
-	r.GET("/tasks/pending", func(c *gin.Context) {
-		rows, err := db.Query("SELECT id, title, description, due_date, completed FROM tasks WHERE completed=false ORDER BY id")
-		if err != nil {
-			c.AbortWithError(http.StatusInternalServerError, err)
-			return
-		}
-		defer rows.Close()
-
-		tasks := []Task{}
-		for rows.Next() {
-			var task Task
-			if err := rows.Scan(&task.ID, &task.Title, &task.Description, &task.DueDate, &task.Completed); err != nil {
-				c.AbortWithError(http.StatusInternalServerError, err)
-				return
-			}
-			tasks = append(tasks, task)
-		}
-
-		c.JSON(http.StatusOK, tasks)
-	})
+	r.GET("/tasks/pending", handlers.GetTasksPending)
 
 	// Obtener todas las tareas con fecha expirada
-	r.GET("/tasks/expired", func(c *gin.Context) {
-		rows, err := db.Query("SELECT id, title, description, due_date, completed FROM tasks WHERE due_date<$1 ORDER BY id", time.Now())
-		if err != nil {
-			c.AbortWithError(http.StatusInternalServerError, err)
-			return
-		}
-		defer rows.Close()
-
-		tasks := []Task{}
-		for rows.Next() {
-			var task Task
-			if err := rows.Scan(&task.ID, &task.Title, &task.Description, &task.DueDate, &task.Completed); err != nil {
-				c.AbortWithError(http.StatusInternalServerError, err)
-				return
-			}
-			tasks = append(tasks, task)
-		}
-
-		c.JSON(http.StatusOK, tasks)
-	})
+	r.GET("/tasks/expired", handlers.GetTasksExpired)
 
 	// Actualizar una tarea existente
-	r.PUT("/tasks/:id", func(c *gin.Context) {
-		id := c.Param("id")
-		fmt.Println("EL VALOR DEL ID!!!!!!!!!!!!!!!", id)
-		var task Task
-		if err := c.BindJSON(&task); err != nil {
-			c.AbortWithStatus(http.StatusBadRequest)
-			return
-		}
-
-		fmt.Println("COMPLETED ANTES DE LA ACTUALIZACIÓN:", task.Completed)
-
-		// Actualizar la tarea en la base de datos
-		stmt, err := db.Prepare("UPDATE tasks SET title=$1, description=$2, due_date=$3, completed=$4 WHERE id=$5")
-		if err != nil {
-			c.AbortWithError(http.StatusInternalServerError, err)
-			return
-		}
-		defer stmt.Close()
-		fmt.Printf("UPDATE tasks SET title=%s, description=%s, due_date=%s, completed=%t WHERE id=%s\n", task.Title, task.Description, task.DueDate, task.Completed, id)
-		_, err = stmt.Exec(task.Title, task.Description, task.DueDate, task.Completed, id)
-		if err != nil {
-			c.AbortWithError(http.StatusInternalServerError, err)
-			return
-		}
-
-		fmt.Println("COMPLETED DESPUÉS DE LA ACTUALIZACIÓN:", task.Completed)
-
-		c.Status(http.StatusOK)
-	})
+	r.PUT("/tasks/:id", handlers.PutTasksId)
 
 	// Ejecutar el servidor Gin
 	if err := r.Run(":8080"); err != nil {
@@ -202,14 +62,14 @@ func main() {
 
 func createTable(db *sql.DB) {
 	query := `
-		CREATE TABLE IF NOT EXISTS tasks (
-			id SERIAL PRIMARY KEY,
-			title VARCHAR(255) NOT NULL,
-			description TEXT,
-			due_date DATE,
-			completed BOOLEAN NOT NULL DEFAULT false 
-		);
-	`
+			CREATE TABLE IF NOT EXISTS tasks (
+				id SERIAL PRIMARY KEY,
+				title VARCHAR(255) NOT NULL,
+				description TEXT,
+				due_date DATE,
+				completed BOOLEAN NOT NULL DEFAULT false 
+			);
+		`
 	if _, err := db.Exec(query); err != nil {
 		log.Fatal(err)
 	}
