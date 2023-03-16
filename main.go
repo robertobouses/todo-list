@@ -56,6 +56,9 @@ func main() {
 	// Obtener todas las tareas que vencen hoy
 	r.GET("/tasks/today", handlers.GetTasksToday)
 
+	// Obtener las próximas tareas no completadas
+	r.GET("/tasks/next", handlers.GetTasksNext)
+
 	// Ejecutar el servidor Gin
 	if err := r.Run(":8080"); err != nil {
 		log.Fatal(err)
