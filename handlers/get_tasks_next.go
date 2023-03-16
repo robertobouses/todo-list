@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/robertobouses/todo-list/domain"
 )
 
 func GetTasksNext(c *gin.Context) {
@@ -36,9 +38,9 @@ func GetTasksNext(c *gin.Context) {
 	}
 	defer rows.Close()
 
-	var tasks []Task
+	var tasks []domain.Task
 	for rows.Next() {
-		var task Task
+		var task domain.Task
 		err := rows.Scan(&task.ID, &task.Title, &task.Description, &task.DueDate, &task.Completed)
 		if err != nil {
 			log.Printf("error querying for next tasks: %v \n", err)

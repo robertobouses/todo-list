@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/robertobouses/todo-list/domain"
 )
 
 func PutTasksId(c *gin.Context) {
@@ -14,7 +15,7 @@ func PutTasksId(c *gin.Context) {
 
 	id := c.Param("id")
 	fmt.Println("EL VALOR DEL ID!!!!!!!!!!!!!!!", id)
-	var task Task
+	var task domain.Task
 	if err := c.BindJSON(&task); err != nil {
 		c.AbortWithStatus(http.StatusBadRequest)
 		return

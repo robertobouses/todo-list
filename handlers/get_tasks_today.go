@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/robertobouses/todo-list/domain"
 )
 
 func GetTasksToday(c *gin.Context) {
@@ -24,11 +25,11 @@ func GetTasksToday(c *gin.Context) {
 	defer rows.Close()
 
 	// Crear un slice de tareas
-	var tasks []Task
+	var tasks []domain.Task
 
 	// Iterar sobre los resultados y agregarlos al slice
 	for rows.Next() {
-		var task Task
+		var task domain.Task
 		if err := rows.Scan(&task.ID, &task.Title, &task.Description, &task.DueDate, &task.Completed); err != nil {
 			log.Fatal(err)
 		}

@@ -5,21 +5,14 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/robertobouses/todo-list/domain"
 )
-
-type Task struct {
-	ID          int    `json:"id"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	DueDate     string `json:"dueDate"`
-	Completed   bool   `json:"completed"`
-}
 
 func PostTasks(c *gin.Context) {
 
 	db, err := sql.Open("postgres", "postgres://postgres:mysecretpassword@localhost:5432/postgres?sslmode=disable")
 
-	var task Task
+	var task domain.Task
 	if err := c.BindJSON(&task); err != nil {
 		c.AbortWithStatus(http.StatusBadRequest)
 		return

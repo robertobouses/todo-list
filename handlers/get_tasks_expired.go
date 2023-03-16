@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/robertobouses/todo-list/domain"
 )
 
 func GetTasksExpired(c *gin.Context) {
@@ -19,9 +21,9 @@ func GetTasksExpired(c *gin.Context) {
 	}
 	defer rows.Close()
 
-	tasks := []Task{}
+	tasks := []domain.Task{}
 	for rows.Next() {
-		var task Task
+		var task domain.Task
 		if err := rows.Scan(&task.ID, &task.Title, &task.Description, &task.DueDate, &task.Completed); err != nil {
 			c.AbortWithError(http.StatusInternalServerError, err)
 			return

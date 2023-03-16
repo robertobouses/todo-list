@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
 	"github.com/robertobouses/todo-list/handlers"
+	"github.com/robertobouses/todo-list/repository"
 
 	"github.com/robertobouses/todo-list/handlers/users"
 )
@@ -63,15 +64,16 @@ func createTable(db *sql.DB) {
 }
 
 func main() {
-	// Abrir la conexión con la base de datos
-	db, err := sql.Open("postgres", "postgres://postgres:mysecretpassword@localhost:5432/postgres?sslmode=disable")
+	// Crear un nuevo repositorio
+	repo, err := repository.NewTaskRepository("postgres://postgres:mysecretpassword@localhost:5432/postgres?sslmode=disable")
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer db.Close()
-
 	// Crear la tabla si no existe
-	createTable(db)
+	createTable(repo.DB)
+
+	// crear los handlers
+	taskHandler := handlers.NewTaskHandler(repo)
 
 	// Crear el enrutador Gin
 	r := gin.Default()
@@ -86,7 +88,7 @@ func main() {
 	r.GET("/tasks/:id", handlers.GetTasksId)
 
 	// Obtener todas las tareas completadas
-	r.GET("/tasks/completed", handlers.GetTasksCompleted)
+	r.GET("/tasks/completed", taskHandler.GetTasksCompleted)
 
 	// Obtener todas las tareas no completadas
 	r.GET("/tasks/pending", handlers.GetTasksPending)
